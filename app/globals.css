@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 250 249 246; /* #FAF9F6 */
+    --foreground: 10 35 66; /* #0A2342 */
+    --card: 250 249 246;
+    --card-foreground: 10 35 66;
+    --popover: 250 249 246;
+    --popover-foreground: 10 35 66;
+    --primary: 10 35 66;
+    --primary-foreground: 250 249 246;
+    --secondary: 229 229 229;
+    --secondary-foreground: 10 35 66;
+    --muted: 229 229 229;
+    --muted-foreground: 10 35 66;
+    --accent: 183 110 121;
+    --accent-foreground: 250 249 246;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 250 249 246;
+    --border: 229 229 229;
+    --input: 229 229 229;
+    --ring: 10 35 66;
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-ivory text-navy font-light;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
+  }
+}
+
+@layer components {
+  .luxury-gradient {
+    background: linear-gradient(135deg, #faf9f6 0%, #e5e5e5 100%);
+  }
+
+  .luxury-text-gradient {
+    background: linear-gradient(135deg, #0a2342 0%, #b76e79 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
