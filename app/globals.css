@@ -4,8 +4,8 @@
 
 @layer base {
   :root {
-    --background: 250 249 246; /* #FAF9F6 */
-    --foreground: 10 35 66; /* #0A2342 */
+    /* --background: 250 249 246;
+    --foreground: 10 35 66;
     --card: 250 249 246;
     --card-foreground: 10 35 66;
     --popover: 250 249 246;
@@ -21,7 +21,7 @@
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 250 249 246;
     --border: 229 229 229;
-    --input: 229 229 229;
+    --input: 229 229 229; */
     --ring: 10 35 66;
     --radius: 0.5rem;
   }
@@ -48,4 +48,17 @@
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
+}
+
+@keyframes slide-left {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-left {
+  animation: slide-left 0.25s ease-out forwards;
 }

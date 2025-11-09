@@ -11,7 +11,6 @@ export const metadata: Metadata = {
   title: "Impressa - Luxury Fashion & Custom Design",
   description:
     "Discover luxury fashion with personalized customization. Premium clothing and bags crafted to your unique style.",
-    generator: 'v0.dev'
 }
 
 export default function RootLayout({

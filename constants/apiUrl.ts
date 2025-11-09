@@ -1,0 +1,1 @@
+export const apiUrl = "https://impressa-7rao.onrender.com/api"
