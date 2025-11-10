@@ -3,14 +3,15 @@
 import { useEffect, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { Minus, Plus, Trash2, ShoppingBag, Gift, Truck, ArrowRight } from "lucide-react"
+import { Minus, Plus, Trash2, ShoppingBag, Truck, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import axios from "axios"
 import { apiUrl } from "@/constants/apiUrl"
 import { useRouter } from "next/navigation"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
 export default function CartPage() {
   const router = useRouter()
@@ -19,44 +20,39 @@ export default function CartPage() {
   const [loading, setLoading] = useState(true)
   const [token, setToken] = useState<string | null>(null)
   const [user, setUser] = useState<{ username?: string; email?: string; role?: string } | null>(null)
-  // subtotal returned by API (if available)
   const [apiSubtotal, setApiSubtotal] = useState<number | null>(null)
   const [giftWrap, setGiftWrap] = useState(false)
   const [shippingMethod, setShippingMethod] = useState("standard")
+  const [deliveryAddress, setDeliveryAddress] = useState("")
 
-  // helper: safely parse numbers (fallback to 0)
+  // helper: safely parse numbers
   const safeNumber = (v: any) => {
     const n = Number(v)
     return Number.isFinite(n) ? n : 0
   }
 
-  // helper: normalize item id (support `id` or `itemId` from API)
   const getItemId = (item: any) => item?.id ?? item?.itemId ?? item?._id ?? ""
-
-  // helper: format currency (round to integer Naira)
   const formatCurrency = (value: number) => `₦${Math.round(value).toLocaleString()}`
 
-  // ✅ Load auth token
+  // ✅ Load auth + saved address
   useEffect(() => {
-    const checkAuth = () => {
+    const t = localStorage.getItem("impressa_token")
+    const rawUser = localStorage.getItem("impressa_user")
+    const savedAddress = localStorage.getItem("deliveryAddress")
 
-      const t = localStorage.getItem("impressa_token")
-      const rawUser = localStorage.getItem("impressa_user")
-
-      if (!t) {
-        router.push("/login")
-      }
-      setToken(t)
-
-      try {
-        const parsed = rawUser ? JSON.parse(rawUser) : null
-        setUser(parsed)
-      } catch {
-        setUser(null)
-      }
+    if (!t) {
+      router.push("/login")
     }
 
-    checkAuth()
+    setToken(t)
+    setDeliveryAddress(savedAddress || "")
+
+    try {
+      const parsed = rawUser ? JSON.parse(rawUser) : null
+      setUser(parsed)
+    } catch {
+      setUser(null)
+    }
   }, [router])
 
   // ✅ Fetch Cart
@@ -68,11 +64,9 @@ export default function CartPage() {
   const fetchCart = async () => {
     try {
       setLoading(true)
-
       const res = await axios.get(`${apiUrl}/cart/`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-
       const data = res.data || {}
       setItems(Array.isArray(data.items) ? data.items : [])
       setApiSubtotal(safeNumber(data.subtotal))
@@ -85,9 +79,7 @@ export default function CartPage() {
     }
   }
 
-  // ✅ Remove Item
   const removeItem = async (itemId: string) => {
-    if (!itemId) return
     try {
       await axios.delete(`${apiUrl}/cart/remove/${itemId}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -98,7 +90,6 @@ export default function CartPage() {
     }
   }
 
-  // ✅ Clear Cart
   const clearCart = async () => {
     try {
       await axios.delete(`${apiUrl}/cart/clear`, {
@@ -110,64 +101,90 @@ export default function CartPage() {
     }
   }
 
-  // ✅ Update Quantity
   const updateQuantity = async (itemId: string, newQty: number) => {
-    if (!itemId) return
     if (newQty < 1) {
       removeItem(itemId)
       return
     }
-
     try {
       await axios.post(
         `${apiUrl}/cart/update`,
-        {
-          id: itemId,
-          quantity: newQty,
-        },
+        { id: itemId, quantity: newQty },
         { headers: { Authorization: `Bearer ${token}` } }
       )
-
       fetchCart()
     } catch (err) {
       console.error("Update quantity failed:", err)
     }
   }
 
-// ✅ Initialize Payment (Frontend)
-const initializePayment = async () => {
-  try {
-    const subtotalValue =
-      apiSubtotal !== null
-        ? apiSubtotal
-        : items.reduce(
-            (acc, item) =>
-              acc +
-              (Number(item.itemTotal) ||
-                Number(item.unitPrice) * Number(item.quantity)),
-            0
-          );
+  // ✅ Initialize Payment (Frontend)
+  const initializePayment = async () => {
+    if (!deliveryAddress.trim()) {
+      alert("Please enter your delivery address before proceeding.")
+      return
+    }
 
-    const res = await axios.post(
-      `${apiUrl}/pay/initialize`,
-      {
-        email: user?.email,
-        amount: subtotalValue,
-        orderId: crypto.randomUUID(),
-        cart: items, // ✅ ADD CART HERE
-      },
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
+    try {
+      localStorage.setItem("deliveryAddress", deliveryAddress)
 
-    window.open(res.data.authorization_url, '_blank');
-  } catch (err) {
-    console.error("Payment init failed:", err);
+      const subtotalValue =
+        apiSubtotal !== null
+          ? apiSubtotal
+          : items.reduce(
+              (acc, item) =>
+                acc +
+                (Number(item.itemTotal) ||
+                  Number(item.unitPrice) * Number(item.quantity)),
+              0
+            )
+
+      const totalWithDelivery = subtotalValue + 1500
+      const orderId = crypto.randomUUID()
+
+      const res = await axios.post(
+        `${apiUrl}/pay/initialize`,
+        {
+          email: user?.email,
+          amount: totalWithDelivery,
+          orderId,
+          cart: items,
+          deliveryAddress,
+          itemType: items[0]?.title || "general-item",
+          quantity: items.reduce((acc, item) => acc + (Number(item.quantity) || 1), 0),
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      )
+
+      const { authorization_url, reference } = res.data
+      const paystackWindow = window.open(authorization_url, "_blank")
+
+      // ✅ Auto verify payment
+      const pollInterval = setInterval(async () => {
+        try {
+          const verifyRes = await axios.get(`${apiUrl}/pay/verify/${reference}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+          if (verifyRes.data?.status === "success" || verifyRes.data?.status === "paid") {
+            clearInterval(pollInterval)
+            paystackWindow?.close()
+            clearCart()
+            alert("Payment successful! Your order has been created.")
+            // router.push("/orders")
+          }
+        } catch {
+          // keep polling
+        }
+      }, 4000)
+
+      setTimeout(() => clearInterval(pollInterval), 120000)
+    } catch (err) {
+      console.error("Payment init failed:", err)
+      alert("Payment initialization failed, please try again.")
+    }
   }
-};
-
-
 
   if (loading) {
     return (
@@ -196,20 +213,17 @@ const initializePayment = async () => {
     )
   }
 
-  // ✅ Totals (prefer API subtotal if provided)
   const computedSubtotal =
     apiSubtotal !== null
       ? apiSubtotal
       : items.reduce((sum, item) => {
-        // itemTotal is preferred; fallback to unitPrice * quantity
-        const itemTotal = safeNumber(item.itemTotal)
-        if (itemTotal > 0) return sum + itemTotal
-        return sum + safeNumber(item.unitPrice) * safeNumber(item.quantity)
-      }, 0)
+          const itemTotal = safeNumber(item.itemTotal)
+          if (itemTotal > 0) return sum + itemTotal
+          return sum + safeNumber(item.unitPrice) * safeNumber(item.quantity)
+        }, 0)
 
-  const shippingFee = shippingMethod === "express" ? 2500 : 1500
-  const giftWrapFee = giftWrap ? 2500 : 0
-  const total = computedSubtotal + shippingFee + giftWrapFee
+  const shippingFee = 1500
+  const total = computedSubtotal + shippingFee
 
   return (
     <div className="container py-8">
@@ -219,7 +233,6 @@ const initializePayment = async () => {
             <h1 className="text-3xl font-light text-navy mb-2">Shopping Cart</h1>
             <p className="text-navy/60">{items.length} items in cart</p>
           </div>
-
           <Button variant="ghost" className="text-burgundy" onClick={clearCart}>
             Clear Cart
           </Button>
@@ -233,7 +246,8 @@ const initializePayment = async () => {
             const itemId = getItemId(item)
             const qty = safeNumber(item.quantity)
             const unitPrice = safeNumber(item.unitPrice)
-            const lineTotal = safeNumber(item.itemTotal) > 0 ? safeNumber(item.itemTotal) : unitPrice * qty
+            const lineTotal =
+              safeNumber(item.itemTotal) > 0 ? safeNumber(item.itemTotal) : unitPrice * qty
 
             return (
               <Card key={itemId || Math.random()} className="border-warmgray/30">
@@ -246,37 +260,28 @@ const initializePayment = async () => {
                       height={200}
                       className="w-24 h-32 rounded-md object-cover"
                     />
-
                     <div className="flex-1 space-y-3">
                       <div className="flex justify-between items-start">
                         <div>
                           <h3 className="font-medium text-navy">{item.title}</h3>
                           <p className="text-sm text-navy/60">Standard Item</p>
                         </div>
-
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeItem(itemId)}
-                        >
+                        <Button variant="ghost" size="icon" onClick={() => removeItem(itemId)}>
                           <Trash2 className="h-4 w-4 text-red-500" />
                         </Button>
                       </div>
 
-                      {/* Quantity */}
                       <div className="flex justify-between items-center">
                         <div className="flex items-center gap-3">
                           <Button
                             variant="outline"
                             size="icon"
                             disabled={qty <= 1}
-                            onClick={() => updateQuantity(itemId, Math.max(0, qty - 1))}
+                            onClick={() => updateQuantity(itemId, Math.max(1, qty - 1))}
                           >
                             <Minus className="h-3 w-3" />
                           </Button>
-
                           <span className="w-8 text-center">{qty}</span>
-
                           <Button
                             variant="outline"
                             size="icon"
@@ -285,7 +290,6 @@ const initializePayment = async () => {
                             <Plus className="h-3 w-3" />
                           </Button>
                         </div>
-
                         <div className="text-right font-medium text-navy">
                           {formatCurrency(lineTotal)}
                         </div>
@@ -316,12 +320,19 @@ const initializePayment = async () => {
                 <span>{formatCurrency(shippingFee)}</span>
               </div>
 
-              {giftWrap && (
-                <div className="flex justify-between">
-                  <span>Gift Wrap</span>
-                  <span>{formatCurrency(giftWrapFee)}</span>
-                </div>
-              )}
+              <Separator />
+
+              {/* ✅ Delivery Address Input */}
+              <div className="space-y-2">
+                <Label htmlFor="deliveryAddress">Delivery Address</Label>
+                <Input
+                  id="deliveryAddress"
+                  placeholder="Enter your delivery address"
+                  value={deliveryAddress}
+                  onChange={(e) => setDeliveryAddress(e.target.value)}
+                  className="border-warmgray/50"
+                />
+              </div>
 
               <Separator />
 
