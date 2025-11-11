@@ -40,13 +40,18 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b border-warmgray/20 bg-ivory/95 backdrop-blur supports-[backdrop-filter]:bg-ivory/60">
       <div className="container flex h-24 items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="flex items-center space-x-2">
+        <Link href="/" className="flex items-center">
           <Image
-            src={logoTransparent}
+            src="/logo.png"
             alt="Impressa Logo"
             width={140}
             height={40}
-            className="object-contain"
+            className="object-contain 
+               w-[90px]      /* ✅ mobile */
+               sm:w-[110px]  /* ✅ small devices */
+               md:w-[130px]  /* ✅ tablets */
+               lg:w-[140px]  /* ✅ desktop */
+              "
             priority
           />
         </Link>
