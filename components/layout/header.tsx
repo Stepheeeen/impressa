@@ -42,7 +42,7 @@ export function Header() {
         {/* Logo */}
         <Link href="/" className="flex items-center">
           <Image
-            src="/logo.png"
+            src={logoTransparent}
             alt="Impressa Logo"
             width={140}
             height={40}
