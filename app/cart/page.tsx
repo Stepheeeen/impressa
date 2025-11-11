@@ -13,17 +13,28 @@ import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
+interface DeliveryAddress {
+  country: string
+  state: string
+  location: string
+}
+
 export default function CartPage() {
   const router = useRouter()
 
   const [items, setItems] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [token, setToken] = useState<string | null>(null)
-  const [user, setUser] = useState<{ username?: string; email?: string; role?: string } | null>(null)
+  const [user, setUser] = useState<{ username?: string; email?: string; phone?: string; role?: string } | null>(null)
   const [apiSubtotal, setApiSubtotal] = useState<number | null>(null)
   const [giftWrap, setGiftWrap] = useState(false)
   const [shippingMethod, setShippingMethod] = useState("standard")
-  const [deliveryAddress, setDeliveryAddress] = useState("")
+  const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress>({
+    country: "",
+    state: "",
+    location: "",
+  })
+  const [phone, setPhone] = useState("")
 
   // helper: safely parse numbers
   const safeNumber = (v: any) => {
@@ -39,21 +50,34 @@ export default function CartPage() {
     const t = localStorage.getItem("impressa_token")
     const rawUser = localStorage.getItem("impressa_user")
     const savedAddress = localStorage.getItem("deliveryAddress")
+    const savedPhone = localStorage.getItem("phoneNumber")
 
-    if (!t) {
-      router.push("/login")
-    }
+    if (!t) router.push("/login")
 
     setToken(t)
-    setDeliveryAddress(savedAddress || "")
+
+    // ✅ Safe parse delivery address
+    if (savedAddress) {
+      try {
+        const parsed = JSON.parse(savedAddress)
+        if (typeof parsed === "object") setDeliveryAddress(parsed)
+        else setDeliveryAddress({ country: "", state: "", location: parsed }) // fallback
+      } catch {
+        // fallback: treat savedAddress as location only
+        setDeliveryAddress({ country: "", state: "", location: savedAddress })
+      }
+    }
+
+    if (savedPhone) setPhone(savedPhone)
 
     try {
-      const parsed = rawUser ? JSON.parse(rawUser) : null
-      setUser(parsed)
+      const parsedUser = rawUser ? JSON.parse(rawUser) : null
+      setUser(parsedUser)
     } catch {
       setUser(null)
     }
   }, [router])
+
 
   // ✅ Fetch Cart
   useEffect(() => {
@@ -118,73 +142,94 @@ export default function CartPage() {
     }
   }
 
-  // ✅ Initialize Payment (Frontend)
-  const initializePayment = async () => {
-    if (!deliveryAddress.trim()) {
-      alert("Please enter your delivery address before proceeding.")
-      return
-    }
-
-    try {
-      localStorage.setItem("deliveryAddress", deliveryAddress)
-
-      const subtotalValue =
-        apiSubtotal !== null
-          ? apiSubtotal
-          : items.reduce(
-              (acc, item) =>
-                acc +
-                (Number(item.itemTotal) ||
-                  Number(item.unitPrice) * Number(item.quantity)),
-              0
-            )
-
-      const totalWithDelivery = subtotalValue + 1500
-      const orderId = crypto.randomUUID()
-
-      const res = await axios.post(
-        `${apiUrl}/pay/initialize`,
-        {
-          email: user?.email,
-          amount: totalWithDelivery,
-          orderId,
-          cart: items,
-          deliveryAddress,
-          itemType: items[0]?.title || "general-item",
-          quantity: items.reduce((acc, item) => acc + (Number(item.quantity) || 1), 0),
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      )
-
-      const { authorization_url, reference } = res.data
-      const paystackWindow = window.open(authorization_url, "_blank")
-
-      // ✅ Auto verify payment
-      const pollInterval = setInterval(async () => {
-        try {
-          const verifyRes = await axios.get(`${apiUrl}/pay/verify/${reference}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          })
-          if (verifyRes.data?.status === "success" || verifyRes.data?.status === "paid") {
-            clearInterval(pollInterval)
-            paystackWindow?.close()
-            clearCart()
-            alert("Payment successful! Your order has been created.")
-            // router.push("/orders")
-          }
-        } catch {
-          // keep polling
-        }
-      }, 4000)
-
-      setTimeout(() => clearInterval(pollInterval), 120000)
-    } catch (err) {
-      console.error("Payment init failed:", err)
-      alert("Payment initialization failed, please try again.")
-    }
+const initializePayment = async () => {
+  if (
+    !deliveryAddress.country ||
+    !deliveryAddress.state ||
+    !deliveryAddress.location ||
+    !phone.trim()
+  ) {
+    alert("Please fill all delivery fields and your WhatsApp number before proceeding.");
+    return;
   }
+
+  try {
+    localStorage.setItem("deliveryAddress", JSON.stringify(deliveryAddress));
+    localStorage.setItem("phoneNumber", phone);
+
+    const subtotalValue =
+      apiSubtotal !== null
+        ? apiSubtotal
+        : items.reduce(
+            (acc, item) =>
+              acc +
+              (Number(item.itemTotal) ||
+                Number(item.unitPrice) * Number(item.quantity)),
+            0
+          );
+
+    const shippingFee = 1500;
+    const totalWithDelivery = subtotalValue + shippingFee;
+    const orderId = crypto.randomUUID();
+
+    const res = await axios.post(
+      `${apiUrl}/pay/initialize`,
+      {
+        email: user?.email,
+        phone,
+
+        // ✅ send individually — DO NOT send as an object!
+        country: deliveryAddress.country,
+        state: deliveryAddress.state,
+        address: deliveryAddress.location,
+
+        amount: totalWithDelivery,
+        orderId,
+        cart: items,
+        itemType: items[0]?.title || "general-item",
+        quantity: items.reduce((acc, item) => acc + (Number(item.quantity) || 1), 0),
+      },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    const { authorization_url, reference } = res.data;
+    const paystackWindow = window.open(authorization_url, "_blank", "width=600,height=700");
+
+    if (!paystackWindow) {
+      alert("Popup blocked. Please allow popups and try again.");
+      return;
+    }
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const verifyRes = await axios.get(`${apiUrl}/pay/verify/${reference}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (verifyRes.data?.status === "success" || verifyRes.data?.status === "paid") {
+          clearInterval(pollInterval);
+
+          try {
+            paystackWindow.close();
+          } catch {}
+
+          await clearCart();
+          alert("Payment successful! Your order has been created.");
+
+          router.push("/orders");
+        }
+      } catch (err) {
+        console.warn("Verify polling...", err);
+      }
+    }, 4000);
+
+    setTimeout(() => clearInterval(pollInterval), 120000);
+  } catch (err) {
+    console.error("Payment init failed:", err);
+    alert("Payment initialization failed, please try again.");
+  }
+};
+
 
   if (loading) {
     return (
@@ -217,26 +262,24 @@ export default function CartPage() {
     apiSubtotal !== null
       ? apiSubtotal
       : items.reduce((sum, item) => {
-          const itemTotal = safeNumber(item.itemTotal)
-          if (itemTotal > 0) return sum + itemTotal
-          return sum + safeNumber(item.unitPrice) * safeNumber(item.quantity)
-        }, 0)
+        const itemTotal = safeNumber(item.itemTotal)
+        if (itemTotal > 0) return sum + itemTotal
+        return sum + safeNumber(item.unitPrice) * safeNumber(item.quantity)
+      }, 0)
 
   const shippingFee = 1500
   const total = computedSubtotal + shippingFee
 
   return (
     <div className="container py-8">
-      <div className="mb-8">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-light text-navy mb-2">Shopping Cart</h1>
-            <p className="text-navy/60">{items.length} items in cart</p>
-          </div>
-          <Button variant="ghost" className="text-burgundy" onClick={clearCart}>
-            Clear Cart
-          </Button>
+      <div className="mb-8 flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-light text-navy mb-2">Shopping Cart</h1>
+          <p className="text-navy/60">{items.length} items in cart</p>
         </div>
+        <Button variant="ghost" className="text-burgundy" onClick={clearCart}>
+          Clear Cart
+        </Button>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-8">
@@ -302,7 +345,7 @@ export default function CartPage() {
           })}
         </div>
 
-        {/* Order Summary */}
+        {/* Order Summary & Address */}
         <div className="space-y-6">
           <Card className="border-warmgray/30">
             <CardHeader>
@@ -322,14 +365,57 @@ export default function CartPage() {
 
               <Separator />
 
-              {/* ✅ Delivery Address Input */}
+              {/* Delivery Instructions */}
+              <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 text-sm text-yellow-900 rounded-md space-y-1">
+                <p>Orders take <strong>3-7 business days</strong> for delivery.</p>
+                <p>Provide an <strong>active WhatsApp number</strong> to receive updates via WhatsApp or email.</p>
+              </div>
+
+              {/* Address Fields */}
               <div className="space-y-2">
-                <Label htmlFor="deliveryAddress">Delivery Address</Label>
+                <Label htmlFor="fullName">Full Name</Label>
                 <Input
-                  id="deliveryAddress"
-                  placeholder="Enter your delivery address"
-                  value={deliveryAddress}
-                  onChange={(e) => setDeliveryAddress(e.target.value)}
+                  id="fullName"
+                  placeholder="Enter your full name"
+                  value={user?.username || ""}
+                  onChange={(e) => setUser({ ...user!, username: e.target.value })}
+                  className="border-warmgray/50"
+                />
+
+                <Label htmlFor="phoneNumber">Phone Number (WhatsApp)</Label>
+                <Input
+                  id="phoneNumber"
+                  type="tel"
+                  placeholder="e.g., +2348012345678"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="border-warmgray/50"
+                />
+
+                <Label htmlFor="country">Country</Label>
+                <Input
+                  id="country"
+                  placeholder="Enter your country"
+                  value={deliveryAddress.country}
+                  onChange={(e) => setDeliveryAddress({ ...deliveryAddress, country: e.target.value })}
+                  className="border-warmgray/50"
+                />
+
+                <Label htmlFor="state">State</Label>
+                <Input
+                  id="state"
+                  placeholder="Enter your state"
+                  value={deliveryAddress.state}
+                  onChange={(e) => setDeliveryAddress({ ...deliveryAddress, state: e.target.value })}
+                  className="border-warmgray/50"
+                />
+
+                <Label htmlFor="location">City / Location</Label>
+                <Input
+                  id="location"
+                  placeholder="Enter your city or neighborhood"
+                  value={deliveryAddress.location}
+                  onChange={(e) => setDeliveryAddress({ ...deliveryAddress, location: e.target.value })}
                   className="border-warmgray/50"
                 />
               </div>
@@ -352,7 +438,7 @@ export default function CartPage() {
 
               <div className="flex items-center justify-center gap-2 text-sm text-navy/60">
                 <Truck className="h-4 w-4" />
-                <span>Free shipping on orders over ₦500,000</span>
+                <span>Free shipping on orders over ₦50,000</span>
               </div>
             </CardContent>
           </Card>

@@ -6,6 +6,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import hero from '@/public/shopping-centre.jpg'
 import clothes from '@/public/clothing.jpg'
 import shoes from '@/public/footwear.jpg'
+import accessories from '@/public/accessories.jpg'
+import bags from '@/public/bags.jpg'
 
 export default function HomePage() {
   return (
@@ -103,14 +105,14 @@ export default function HomePage() {
         <div className="container">
           <div className="text-center space-y-4 mb-16">
             <h2 className="text-4xl font-light text-navy">Featured Collections</h2>
-            <p className="text-lg text-navy/70">Discover our signature pieces in clothing and accessories</p>
+            <p className="text-lg text-navy/70">Discover our signature pieces in clothing, footwear, and accessories</p>
           </div>
 
           <div className="grid md:grid-cols-2 gap-8">
             {/* Clothing Category */}
             <div className="group relative overflow-hidden rounded-lg">
               <Image
-                src={clothes}
+                src={clothes} // your clothing image
                 alt="Luxury Clothing Collection"
                 width={800}
                 height={600}
@@ -133,11 +135,11 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Bags Category */}
+            {/* Shoes Category */}
             <div className="group relative overflow-hidden rounded-lg">
               <Image
-                src={shoes}
-                alt="Luxury Bags Collection"
+                src={shoes} // your shoes image
+                alt="Luxury Shoes Collection"
                 width={800}
                 height={600}
                 className="object-cover w-full h-96 group-hover:scale-105 transition-transform duration-500"
@@ -151,8 +153,60 @@ export default function HomePage() {
                   className="border-ivory text-ivory hover:bg-ivory hover:text-navy bg-transparent"
                   asChild
                 >
-                  <Link href="/products">
+                  <Link href="/products?category=shoes">
                     Shop Shoes
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+
+            {/* Bags Category */}
+            <div className="group relative overflow-hidden rounded-lg">
+              <Image
+                src={bags} // your bags image
+                alt="Luxury Bags Collection"
+                width={800}
+                height={600}
+                className="object-cover w-full h-96 group-hover:scale-105 transition-transform duration-500"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-navy/80 to-transparent" />
+              <div className="absolute bottom-8 left-8 text-ivory">
+                <h3 className="text-3xl font-light mb-2">Bags</h3>
+                <p className="text-ivory/90 mb-4">Premium bags designed for elegance and utility</p>
+                <Button
+                  variant="outline"
+                  className="border-ivory text-ivory hover:bg-ivory hover:text-navy bg-transparent"
+                  asChild
+                >
+                  <Link href="/products?category=bags">
+                    Shop Bags
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+
+            {/* Accessories Category */}
+            <div className="group relative overflow-hidden rounded-lg">
+              <Image
+                src={accessories} // your accessories image
+                alt="Luxury Accessories Collection"
+                width={800}
+                height={600}
+                className="object-cover w-full h-96 group-hover:scale-105 transition-transform duration-500"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-navy/80 to-transparent" />
+              <div className="absolute bottom-8 left-8 text-ivory">
+                <h3 className="text-3xl font-light mb-2">Accessories</h3>
+                <p className="text-ivory/90 mb-4">Refined accessories to complement your style</p>
+                <Button
+                  variant="outline"
+                  className="border-ivory text-ivory hover:bg-ivory hover:text-navy bg-transparent"
+                  asChild
+                >
+                  <Link href="/products?category=accessories">
+                    Shop Accessories
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
@@ -161,6 +215,7 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
 
       {/* CTA Section */}
       <section className="py-24 bg-navy">

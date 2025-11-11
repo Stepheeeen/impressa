@@ -317,7 +317,7 @@ export default function ProductDetailPage() {
             <div className="text-center space-y-2">
               <Truck className="w-6 h-6 text-rosegold mx-auto" />
               <p className="font-medium text-navy">Free Shipping</p>
-              <p className="text-navy/60">On orders over ₦500,000</p>
+              <p className="text-navy/60">On orders over ₦50,000</p>
             </div>
 
             <div className="text-center space-y-2">
@@ -336,7 +336,7 @@ export default function ProductDetailPage() {
       </div>
 
       {/* ✅ DESCRIPTION TABS */}
-      <div className="mt-16">
+      {/* <div className="mt-16">
         <Tabs defaultValue="description">
           <TabsList className="grid grid-cols-3">
             <TabsTrigger value="description">Description</TabsTrigger>
@@ -368,7 +368,7 @@ export default function ProductDetailPage() {
             </Card>
           </TabsContent>
         </Tabs>
-      </div>
+      </div> */}
     </div>
   )
 }

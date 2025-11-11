@@ -27,6 +27,7 @@ export default function OrdersPage() {
     }
 
     setToken(t)
+
     try {
       setUser(rawUser ? JSON.parse(rawUser) : null)
     } catch {
@@ -55,6 +56,7 @@ export default function OrdersPage() {
   }
 
   const formatCurrency = (val: number) => `₦${Number(val).toLocaleString()}`
+
   const formatDate = (d: string) =>
     new Date(d).toLocaleString("en-NG", {
       day: "numeric",
@@ -123,6 +125,7 @@ export default function OrdersPage() {
                   Order #{order._id.slice(-6)}
                 </div>
               </CardTitle>
+
               {statusBadge(order.status)}
             </CardHeader>
 
@@ -131,24 +134,43 @@ export default function OrdersPage() {
                 <span>Item Type:</span>
                 <span className="font-medium">{order.itemType}</span>
               </div>
+
               <div className="flex justify-between">
                 <span>Quantity:</span>
                 <span className="font-medium">{order.quantity}</span>
               </div>
+
               <div className="flex justify-between">
                 <span>Total:</span>
                 <span className="font-medium">{formatCurrency(order.totalAmount)}</span>
               </div>
+
               <div className="flex justify-between">
                 <span>Payment Ref:</span>
                 <span className="font-mono text-xs">{order.paymentRef}</span>
               </div>
-              <div className="flex justify-between">
+
+              {/* ✅ PATCHED DELIVERY ADDRESS */}
+              <div className="flex justify-between items-start">
                 <span>Address:</span>
-                <span className="text-right max-w-[180px] truncate">
-                  {order.deliveryAddress || "—"}
-                </span>
+
+                <div className="text-right max-w-[180px] text-xs leading-tight">
+                  {order.deliveryAddress ? (
+                    <>
+                      <div>{order.deliveryAddress.address || "—"}</div>
+                      <div>{order.deliveryAddress.state || ""}</div>
+                      <div>{order.deliveryAddress.country || ""}</div>
+                      <div className="font-mono text-[11px] mt-1 text-navy/60">
+                        {order.deliveryAddress.phone || ""}
+                      </div>
+                    </>
+                  ) : (
+                    "—"
+                  )}
+                </div>
               </div>
+              {/* ✅ END PATCH */}
+
               <div className="flex justify-between">
                 <span>Ordered:</span>
                 <span>{formatDate(order.createdAt)}</span>
@@ -162,7 +184,10 @@ export default function OrdersPage() {
                 ) : (
                   <Clock className="h-4 w-4 text-gray-400" />
                 )}
-                <span className="text-xs text-navy/60">Last updated {formatDate(order.updatedAt)}</span>
+
+                <span className="text-xs text-navy/60">
+                  Last updated {formatDate(order.updatedAt)}
+                </span>
               </div>
             </CardContent>
           </Card>
