@@ -144,15 +144,15 @@ export default function HomePage() {
               />
               <div className="absolute inset-0 bg-gradient-to-t from-navy/80 to-transparent" />
               <div className="absolute bottom-8 left-8 text-ivory">
-                <h3 className="text-3xl font-light mb-2">Bags</h3>
-                <p className="text-ivory/90 mb-4">Handcrafted accessories for every occasion</p>
+                <h3 className="text-3xl font-light mb-2">Shoes</h3>
+                <p className="text-ivory/90 mb-4">Handcrafted footwears for every occasion</p>
                 <Button
                   variant="outline"
                   className="border-ivory text-ivory hover:bg-ivory hover:text-navy bg-transparent"
                   asChild
                 >
-                  <Link href="/products?category=bags">
-                    Shop Bags
+                  <Link href="/products">
+                    Shop Shoes
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
