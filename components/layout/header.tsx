@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
+import logoTransparent from '@/public/impressa-logo.png'
+import Image from "next/image"
 
 export function Header() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -36,10 +38,17 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-warmgray/20 bg-ivory/95 backdrop-blur supports-[backdrop-filter]:bg-ivory/60">
-      <div className="container flex h-16 items-center justify-between">
+      <div className="container flex h-24 items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center space-x-2">
-          <span className="text-2xl font-light tracking-wider luxury-text-gradient">IMPRESSA</span>
+          <Image
+            src={logoTransparent}
+            alt="Impressa Logo"
+            width={140}
+            height={40}
+            className="object-contain"
+            priority
+          />
         </Link>
 
         {/* Desktop Navigation */}
@@ -59,7 +68,7 @@ export function Header() {
           >
             Accessories
           </Link>
-          <Link href={isAuthenticated? "/custom" : "/login"} className="text-sm font-light text-navy hover:text-rosegold transition-colors">
+          <Link href={isAuthenticated ? "/custom" : "/login"} className="text-sm font-light text-navy hover:text-rosegold transition-colors">
             Custom Design
           </Link>
         </nav>
@@ -151,7 +160,7 @@ export function Header() {
                 Accessories
               </Link>
               <Link
-                href={isAuthenticated? "/custom" : "/login"}
+                href={isAuthenticated ? "/custom" : "/login"}
                 className="text-base font-light text-navy hover:text-rosegold"
                 onClick={() => setMobileOpen(false)}
               >

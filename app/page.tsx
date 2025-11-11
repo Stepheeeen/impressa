@@ -3,23 +3,26 @@ import Image from "next/image"
 import { ArrowRight, Sparkles, Palette, Crown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import hero from '@/public/shopping-centre.jpg'
+import clothes from '@/public/clothing.jpg'
+import shoes from '@/public/footwear.jpg'
 
 export default function HomePage() {
   return (
     <div className="space-y-0">
       {/* Hero Section */}
       <section className="relative h-[80vh] flex items-center justify-center luxury-gradient">
-        <div className="absolute inset-0 bg-gradient-to-r from-ivory/90 to-transparent z-10" />
+        <div className="absolute inset-0 bg-gradient-to-r from-burgundy/90 to-transparent z-10" />
         <Image
-          src="/placeholder.svg?height=800&width=1200"
+          src={hero}
           alt="Luxury Fashion Hero"
           fill
           className="object-cover"
           priority
         />
         <div className="relative z-20 container text-center space-y-8">
-          <h1 className="text-5xl md:text-7xl font-light tracking-wider luxury-text-gradient">IMPRESSA</h1>
-          <p className="text-xl md:text-2xl text-navy/80 font-light max-w-2xl mx-auto leading-relaxed">
+          <h1 className="text-5xl md:text-7xl font-light tracking-wider text-ivory">IMPRESSA</h1>
+          <p className="text-xl md:text-2xl text-ivory/90 font-light max-w-2xl mx-auto leading-relaxed">
             Where luxury meets personalization. Craft your signature style with our exclusive collection.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -33,14 +36,14 @@ export default function HomePage() {
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Link>
             </Button>
-            <Button
+            {/* <Button
               size="lg"
               variant="outline"
               className="border-navy text-navy hover:bg-navy hover:text-ivory px-8 py-6 text-lg font-light bg-transparent"
               asChild
             >
               <Link href="/custom">Custom Design</Link>
-            </Button>
+            </Button> */}
           </div>
         </div>
       </section>
@@ -107,7 +110,7 @@ export default function HomePage() {
             {/* Clothing Category */}
             <div className="group relative overflow-hidden rounded-lg">
               <Image
-                src="/placeholder.svg?height=600&width=800"
+                src={clothes}
                 alt="Luxury Clothing Collection"
                 width={800}
                 height={600}
@@ -133,7 +136,7 @@ export default function HomePage() {
             {/* Bags Category */}
             <div className="group relative overflow-hidden rounded-lg">
               <Image
-                src="/placeholder.svg?height=600&width=800"
+                src={shoes}
                 alt="Luxury Bags Collection"
                 width={800}
                 height={600}

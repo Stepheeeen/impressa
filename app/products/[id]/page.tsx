@@ -52,7 +52,7 @@ export default function ProductDetailPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false)
   const [toast, setToast] = useState<{ message: string; type?: "success" | "error" } | null>(null)
 
-  // preserve your original auth check
+  // Auth check
   useEffect(() => {
     const auth = localStorage.getItem("impressa_token")
     if (auth) setIsAuthenticated(true)
@@ -109,19 +109,11 @@ export default function ProductDetailPage() {
   }, [id])
 
   if (loading) {
-    return (
-      <div className="container py-16 text-center text-navy">
-        Loading product…
-      </div>
-    )
+    return <div className="container py-16 text-center text-navy">Loading product…</div>
   }
 
   if (error || !product) {
-    return (
-      <div className="container py-16 text-center text-red-600">
-        {error || "Unable to load product"}
-      </div>
-    )
+    return <div className="container py-16 text-center text-red-600">{error || "Unable to load product"}</div>
   }
 
   const showToast = (message: string, type: "success" | "error" = "success", duration = 3000) => {
@@ -131,37 +123,36 @@ export default function ProductDetailPage() {
     }, duration)
   }
 
-
-  // ✅ Fallback images array (backend only gives one)
-  const images = [product.imageUrl]
+  // ✅ MULTI-IMAGE + FAILSAFE PATCH
+  const images =
+    Array.isArray(product.imageUrls) && product.imageUrls.length > 0
+      ? product.imageUrls
+      : product.imageUrl
+      ? [product.imageUrl]
+      : ["/placeholder.svg"]
 
   return (
     <div className="container py-8">
       {toast && (
         <div
-          className={`fixed top-4 right-4 z-50 max-w-xs w-full px-4 py-2 rounded shadow-lg text-sm ${toast.type === "success" ? "bg-green-600 text-white" : "bg-red-600 text-white"
-            }`}
+          className={`fixed top-4 right-4 z-50 max-w-xs w-full px-4 py-2 rounded shadow-lg text-sm ${
+            toast.type === "success" ? "bg-green-600 text-white" : "bg-red-600 text-white"
+          }`}
           role="status"
-          aria-live="polite"
         >
           <div className="flex items-center justify-between">
             <div>{toast.message}</div>
-            <button
-              aria-label="Close toast"
-              onClick={() => setToast(null)}
-              className="ml-3 opacity-90 hover:opacity-100"
-            >
-              ✕
-            </button>
+            <button aria-label="Close toast" onClick={() => setToast(null)} className="ml-3">✕</button>
           </div>
         </div>
       )}
+
       <div className="grid lg:grid-cols-2 gap-12">
-        {/* Product Images */}
+        {/* ✅ IMAGE GALLERY */}
         <div className="space-y-4">
           <div className="aspect-[4/5] overflow-hidden rounded-lg bg-warmgray/20">
             <Image
-              src={images[selectedImage] || "/placeholder.svg"}
+              src={images[selectedImage]}
               alt={product.title}
               width={500}
               height={600}
@@ -170,14 +161,13 @@ export default function ProductDetailPage() {
           </div>
 
           <div className="grid grid-cols-4 gap-4">
-            {images.map((image, index) => (
+            {images.map((image: string, index: number) => (
               <button
                 key={index}
                 onClick={() => setSelectedImage(index)}
-                className={`aspect-square overflow-hidden rounded-lg border-2 transition-colors ${selectedImage === index
-                  ? "border-rosegold"
-                  : "border-warmgray/30"
-                  }`}
+                className={`aspect-square overflow-hidden rounded-lg border-2 transition-colors ${
+                  selectedImage === index ? "border-rosegold" : "border-warmgray/30"
+                }`}
               >
                 <Image
                   src={image}
@@ -191,7 +181,7 @@ export default function ProductDetailPage() {
           </div>
         </div>
 
-        {/* Product Details */}
+        {/* ✅ PRODUCT INFO */}
         <div className="space-y-6">
           <div>
             <div className="flex items-center gap-2 mb-2">
@@ -209,58 +199,41 @@ export default function ProductDetailPage() {
 
             <h1 className="text-3xl font-light text-navy mb-2">{product.title}</h1>
 
-            {/* <div className="flex items-center gap-2 mb-4">
-              <div className="flex items-center">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-4 h-4 fill-rosegold text-rosegold" />
-                ))}
-              </div>
-              <span className="text-sm text-navy/60">(24 reviews)</span>
-            </div> */}
-
             <div className="flex items-center gap-3">
               <span className="text-3xl font-light text-navy">
-                ₦{(product.price).toLocaleString()}
+                ₦{product.price.toLocaleString()}
               </span>
             </div>
           </div>
 
           <Separator />
 
-          {/* Product Options */}
+          {/* ✅ OPTIONS */}
           <div className="space-y-6">
-            {/* Color Selection */}
+            {/* Colors */}
             {product.colors?.length > 0 && (
               <div className="space-y-3">
-                <Label className="text-base font-medium">
-                  Color: {selectedColor}
-                </Label>
+                <Label className="text-base font-medium">Color: {selectedColor}</Label>
                 <div className="flex gap-3">
                   {product.colors.map((color: string) => (
                     <button
                       key={color}
                       onClick={() => setSelectedColor(color)}
-                      className={`w-10 h-10 rounded-full border-2 transition-all ${selectedColor === color
-                        ? "border-rosegold scale-110"
-                        : "border-warmgray"
-                        }`}
-                      style={{
-                        backgroundColor: color.toLowerCase(),
-                      }}
+                      className={`w-10 h-10 rounded-full border-2 transition-all ${
+                        selectedColor === color ? "border-rosegold scale-110" : "border-warmgray"
+                      }`}
+                      style={{ backgroundColor: color.toLowerCase() }}
                     />
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Size Selection */}
+            {/* Sizes */}
             {product.sizes?.length > 0 && (
               <div className="space-y-3">
                 <Label className="text-base font-medium">Size</Label>
-                <Select
-                  value={selectedSize}
-                  onValueChange={setSelectedSize}
-                >
+                <Select value={selectedSize} onValueChange={setSelectedSize}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select size" />
                   </SelectTrigger>
@@ -278,10 +251,7 @@ export default function ProductDetailPage() {
             {/* Quantity */}
             <div className="space-y-3">
               <Label className="text-base font-medium">Quantity</Label>
-              <Select
-                value={quantity.toString()}
-                onValueChange={(v) => setQuantity(Number(v))}
-              >
+              <Select value={quantity.toString()} onValueChange={(v) => setQuantity(Number(v))}>
                 <SelectTrigger className="w-24">
                   <SelectValue />
                 </SelectTrigger>
@@ -298,7 +268,7 @@ export default function ProductDetailPage() {
 
           <Separator />
 
-          {/* Action Buttons */}
+          {/* ✅ ACTION BUTTONS */}
           <div className="space-y-4">
             <Button
               size="lg"
@@ -309,7 +279,7 @@ export default function ProductDetailPage() {
                   templateId: product._id,
                   itemType: product.category ?? "product",
                   price: product.price ?? 0,
-                  quantity: quantity,
+                  quantity,
                 })
               }}
             >
@@ -336,15 +306,13 @@ export default function ProductDetailPage() {
                       Customize {product.title}
                     </DialogTitle>
                   </DialogHeader>
-
-                  {/* Customization UI (Optional Extension) */}
                   <p className="text-navy/60">Customization module coming soon…</p>
                 </DialogContent>
               </Dialog>
             )}
           </div>
 
-          {/* Features */}
+          {/* ✅ FEATURES */}
           <div className="grid grid-cols-3 gap-4 py-6 border-y border-warmgray/30">
             <div className="text-center space-y-2">
               <Truck className="w-6 h-6 text-rosegold mx-auto" />
@@ -367,7 +335,7 @@ export default function ProductDetailPage() {
         </div>
       </div>
 
-      {/* Description / Tabs */}
+      {/* ✅ DESCRIPTION TABS */}
       <div className="mt-16">
         <Tabs defaultValue="description">
           <TabsList className="grid grid-cols-3">
@@ -379,9 +347,7 @@ export default function ProductDetailPage() {
           <TabsContent value="description" className="mt-8">
             <Card>
               <CardContent className="p-6">
-                <p className="text-navy/80">
-                  Product information coming soon…
-                </p>
+                <p className="text-navy/80">Product information coming soon…</p>
               </CardContent>
             </Card>
           </TabsContent>

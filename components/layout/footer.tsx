@@ -24,15 +24,20 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  href="/products?category=clothing"
+                  href="/products"
                   className="text-ivory/80 hover:text-rosegold transition-colors"
                 >
                   Clothing
                 </Link>
               </li>
               <li>
-                <Link href="/products?category=bags" className="text-ivory/80 hover:text-rosegold transition-colors">
+                <Link href="/products" className="text-ivory/80 hover:text-rosegold transition-colors">
                   Bags
+                </Link>
+              </li>
+              <li>
+                <Link href="/products" className="text-ivory/80 hover:text-rosegold transition-colors">
+                  Shoes
                 </Link>
               </li>
               <li>
@@ -57,16 +62,16 @@ export function Footer() {
                   Size Guide
                 </Link>
               </li>
-              <li>
+              {/* <li>
                 <Link href="/shipping" className="text-ivory/80 hover:text-rosegold transition-colors">
                   Shipping Info
                 </Link>
-              </li>
-              <li>
+              </li> */}
+              {/* <li>
                 <Link href="/returns" className="text-ivory/80 hover:text-rosegold transition-colors">
                   Returns
                 </Link>
-              </li>
+              </li> */}
             </ul>
           </div>
 
@@ -79,14 +84,14 @@ export function Footer() {
                   Instagram
                 </Link>
               </li>
-              <li>
+              {/* <li>
                 <Link href="#" className="text-ivory/80 hover:text-rosegold transition-colors">
                   Pinterest
                 </Link>
-              </li>
+              </li> */}
               <li>
                 <Link href="#" className="text-ivory/80 hover:text-rosegold transition-colors">
-                  Newsletter
+                  Email
                 </Link>
               </li>
             </ul>
