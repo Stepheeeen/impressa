@@ -12,6 +12,8 @@ import { apiUrl } from "@/constants/apiUrl"
 import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import SizeSelector from "@/components/SizeSelector"
+import { resolveSizeOptions } from "@/lib/sizePresets"
 
 interface DeliveryAddress {
   country: string
@@ -42,7 +44,6 @@ export default function CartPage() {
     return Number.isFinite(n) ? n : 0
   }
 
-  const getItemId = (item: any) => item?.id ?? item?.itemId ?? item?._id ?? ""
   const formatCurrency = (value: number) => `₦${Math.round(value).toLocaleString()}`
 
   // ✅ Load auth + saved address
@@ -92,6 +93,7 @@ export default function CartPage() {
         headers: { Authorization: `Bearer ${token}` },
       })
       const data = res.data || {}
+      console.log("Fetched cart data:", data)
       setItems(Array.isArray(data.items) ? data.items : [])
       setApiSubtotal(safeNumber(data.subtotal))
     } catch (err) {
@@ -142,25 +144,42 @@ export default function CartPage() {
     }
   }
 
-const initializePayment = async () => {
-  if (
-    !deliveryAddress.country ||
-    !deliveryAddress.state ||
-    !deliveryAddress.location ||
-    !phone.trim()
-  ) {
-    alert("Please fill all delivery fields and your WhatsApp number before proceeding.");
-    return;
+  // Robust image resolver for cart items
+  const getItemImage = (item: any) => {
+    return (
+      item?.imageUrl ||
+      (Array.isArray(item?.imageUrls) && item.imageUrls.length > 0 ? item.imageUrls[0] : null) ||
+      item?.template?.imageUrl ||
+      (Array.isArray(item?.template?.imageUrls) && item.template.imageUrls.length > 0
+        ? item.template.imageUrls[0]
+        : null) ||
+      "/placeholder.svg"
+    )
   }
 
-  try {
-    localStorage.setItem("deliveryAddress", JSON.stringify(deliveryAddress));
-    localStorage.setItem("phoneNumber", phone);
+  // Optional: a helper to normalize item id if needed
+  const getItemId = (item: any) => item?.id || item?._id || item?.templateId || item?.template?._id
 
-    const subtotalValue =
-      apiSubtotal !== null
-        ? apiSubtotal
-        : items.reduce(
+  // Ensure initializePayment includes options + image so order records preserve variants
+  const initializePayment = async () => {
+    if (
+      !deliveryAddress.country ||
+      !deliveryAddress.state ||
+      !deliveryAddress.location ||
+      !phone.trim()
+    ) {
+      alert("Please fill all delivery fields and your WhatsApp number before proceeding.");
+      return;
+    }
+
+    try {
+      localStorage.setItem("deliveryAddress", JSON.stringify(deliveryAddress));
+      localStorage.setItem("phoneNumber", phone);
+
+      const subtotalValue =
+        apiSubtotal !== null
+          ? apiSubtotal
+          : items.reduce(
             (acc, item) =>
               acc +
               (Number(item.itemTotal) ||
@@ -168,67 +187,84 @@ const initializePayment = async () => {
             0
           );
 
-    const shippingFee = 1500;
-    const totalWithDelivery = subtotalValue + shippingFee;
-    const orderId = crypto.randomUUID();
+      const shippingFee = 1500;
+      const totalWithDelivery = subtotalValue + shippingFee;
+      const orderId = crypto.randomUUID();
 
-    const res = await axios.post(
-      `${apiUrl}/pay/initialize`,
-      {
-        email: user?.email,
-        phone,
+      const res = await axios.post(
+        `${apiUrl}/pay/initialize`,
+        {
+          email: user?.email,
+          phone,
+          country: deliveryAddress.country,
+          state: deliveryAddress.state,
+          address: deliveryAddress.location,
+          amount: totalWithDelivery,
+          orderId,
 
-        // ✅ send individually — DO NOT send as an object!
-        country: deliveryAddress.country,
-        state: deliveryAddress.state,
-        address: deliveryAddress.location,
+          // include full cart with options + image
+          cart: items.map((i: any) => {
+            return {
+              id: getItemId(i),
+              title: i?.title,
+              quantity: Number(i?.quantity) || 1,
+              unitPrice: Number(i?.unitPrice) || undefined,
+              itemTotal: Number(i?.itemTotal) || undefined,
+              itemType: i?.itemType,
+              imageUrl: getItemImage(i),
+              rawImageUrl: i?.imageUrl ?? undefined,
+              options: {
+                ...(i?.options ?? {}),
+                size: i?.options?.size ?? i?.size ?? undefined,
+                color: i?.options?.color ?? i?.color ?? undefined,
+              },
+              inStock: typeof i?.inStock === "boolean" ? i.inStock : undefined,
+            }
+          }),
 
-        amount: totalWithDelivery,
-        orderId,
-        cart: items,
-        itemType: items[0]?.title || "general-item",
-        quantity: items.reduce((acc, item) => acc + (Number(item.quantity) || 1), 0),
-      },
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
+          itemType: items[0]?.title || "general-item",
+          quantity: items.reduce((acc: number, item: any) => acc + (Number(item.quantity) || 1), 0),
+        },
+        { headers: token ? { Authorization: `Bearer ${token}` } : undefined }
+      )
 
-    const { authorization_url, reference } = res.data;
-    const paystackWindow = window.open(authorization_url, "_blank", "width=600,height=700");
+      const { authorization_url, reference } = res.data;
+      const paystackWindow = window.open(authorization_url, "_blank", "width=600,height=700");
 
-    if (!paystackWindow) {
-      alert("Popup blocked. Please allow popups and try again.");
-      return;
-    }
-
-    const pollInterval = setInterval(async () => {
-      try {
-        const verifyRes = await axios.get(`${apiUrl}/pay/verify/${reference}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (verifyRes.data?.status === "success" || verifyRes.data?.status === "paid") {
-          clearInterval(pollInterval);
-
-          try {
-            paystackWindow.close();
-          } catch {}
-
-          await clearCart();
-          alert("Payment successful! Your order has been created.");
-
-          router.push("/orders");
-        }
-      } catch (err) {
-        console.warn("Verify polling...", err);
+      if (!paystackWindow) {
+        alert("Popup blocked. Please allow popups and try again.");
+        return;
       }
-    }, 4000);
 
-    setTimeout(() => clearInterval(pollInterval), 120000);
-  } catch (err) {
-    console.error("Payment init failed:", err);
-    alert("Payment initialization failed, please try again.");
+      const pollInterval = setInterval(async () => {
+        try {
+          const verifyRes = await axios.get(`${apiUrl}/pay/verify/${reference}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          if (verifyRes.data?.status === "success" || verifyRes.data?.status === "paid") {
+            clearInterval(pollInterval);
+
+            try {
+              paystackWindow.close();
+            } catch { }
+
+            await clearCart();
+            alert("Payment successful! Your order has been created.");
+
+            router.push("/orders");
+          }
+        } catch (err) {
+          console.warn("Verify polling...", err);
+        }
+      }, 4000);
+
+      setTimeout(() => clearInterval(pollInterval), 120000);
+    } catch (err) {
+      console.error("Payment init failed:", err)
+      alert("Payment initialization failed, please try again.")
+    }
   }
-};
 
 
   if (loading) {
@@ -297,8 +333,8 @@ const initializePayment = async () => {
                 <CardContent className="p-6">
                   <div className="flex gap-4">
                     <Image
-                      src={item.imageUrl || "/placeholder.svg"}
-                      alt={item.title || "Product"}
+                      src={getItemImage(item)}
+                      alt={item?.title || "Product"}
                       width={150}
                       height={200}
                       className="w-24 h-32 rounded-md object-cover"
@@ -306,8 +342,40 @@ const initializePayment = async () => {
                     <div className="flex-1 space-y-3">
                       <div className="flex justify-between items-start">
                         <div>
-                          <h3 className="font-medium text-navy">{item.title}</h3>
-                          <p className="text-sm text-navy/60">Standard Item</p>
+                          <h3 className="font-medium text-navy">{item?.title || "Product"}</h3>
+                          <p className="text-sm text-navy/60">
+                            {item?.itemType ? String(item.itemType).toLowerCase() : "standard item"}
+                          </p>
+                          {(item?.options?.size || item?.options?.color || item?.size || item?.color) && (
+                            <div className="text-xs text-navy/70 mt-1 flex flex-col sm:flex-row sm:items-center sm:gap-3">
+                              {/* Size (dynamic presets) */}
+                              <div>
+                                <SizeSelector
+                                  category={String(item?.category ?? item?.itemType ?? "")}
+                                  current={item?.options?.size ?? item?.size ?? null}
+                                  readOnly={true} // cart is display-only; set to false where users can change size
+                                  numericRange={
+                                    // example: if item carries numeric range meta
+                                    item?.sizeRange ? { min: item.sizeRange.min, max: item.sizeRange.max, step: item.sizeRange.step } : undefined
+                                  }
+                                />
+                              </div>
+
+                              {/* Color */}
+                              {(item?.options?.color || item?.color) && (
+                                <div className="mt-1 sm:mt-0">
+                                  Color: {item?.options?.color ?? item?.color}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          <div className="text-xs text-navy/60 mt-1 flex items-center gap-3">
+                            {/* <span>SKU: {getItemId(item) ?? "—"}</span> */}
+                            <span className={item?.inStock ? "text-green-600" : "text-red-500"}>
+                              {item?.inStock ? "In stock" : "Out of stock"}
+                            </span>
+                          </div>
                         </div>
                         <Button variant="ghost" size="icon" onClick={() => removeItem(itemId)}>
                           <Trash2 className="h-4 w-4 text-red-500" />

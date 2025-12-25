@@ -44,9 +44,10 @@ export default function ProductDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
-  const [selectedImage, setSelectedImage] = useState(0)
-  const [selectedColor, setSelectedColor] = useState("")
-  const [selectedSize, setSelectedSize] = useState("")
+  // Add or ensure these local states exist for variants
+  const [selectedSize, setSelectedSize] = useState<string | undefined>(undefined)
+  const [selectedColor, setSelectedColor] = useState<string | null>(null)
+  const [selectedImage, setSelectedImage] = useState<number>(0)
   const [quantity, setQuantity] = useState(1)
   const [showCustomization, setShowCustomization] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false)
@@ -58,35 +59,71 @@ export default function ProductDetailPage() {
     if (auth) setIsAuthenticated(true)
   }, [])
 
+  // Robust primary image selector for cart usage
+  const getPrimaryImage = (product: any) => {
+    if (!product) return "/placeholder.svg"
+    if (Array.isArray(product.imageUrls) && product.imageUrls.length > 0) {
+      return product.imageUrls[selectedImage] ?? product.imageUrls[0]
+    }
+    if (product.imageUrl) return product.imageUrl
+    return "/placeholder.svg"
+  }
+
+  // Guarded add-to-cart handler to include options + image
   const handleAddToCart = async ({
     templateId,
-    designId = null,
     itemType,
-    quantity,
+    quantity = 1,
     price,
   }: {
     templateId?: string
-    designId?: string | null
     itemType: string
     quantity?: number
     price: number
   }) => {
     if (!isAuthenticated) return router.push("/login")
 
+    // If product has sizes, require the user to select one
+    if (product?.sizes && Array.isArray(product.sizes) && product.sizes.length > 0 && !selectedSize) {
+      showToast?.("Please select a size before adding to cart", "error")
+      return
+    }
+
+    // Block add-to-cart for out-of-stock items
+    if (product?.inStock === false) {
+      showToast?.("This item is currently out of stock", "error")
+      return
+    }
+
     try {
-      const token = localStorage.getItem("impressa_token")
+      const token = typeof window !== "undefined" ? localStorage.getItem("impressa_token") : null
 
-      const res = await axios.post(
-        `${apiUrl}/cart/add`,
-        { templateId, designId, itemType, quantity, price },
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
+      const payload = {
+        templateId,
+        itemType,
+        quantity,
+        price,
+        // include image for cart rendering
+        imageUrl: getPrimaryImage(product),
+        // include selected variants both inside options and as top-level keys
+        options: {
+          size: selectedSize ?? null,
+          color: selectedColor || null,
+        },
+        size: selectedSize ?? null,    // top-level for backends expecting explicit fields
+        color: selectedColor ?? null,  // top-level for backends expecting explicit fields
+        // include title for cart display
+        title: product?.title ?? undefined,
+      }
 
-      showToast("Added to cart", "success")
-      console.log("Cart Updated:", res.data)
+      await axios.post(`${apiUrl}/cart/add`, payload, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      })
+
+      showToast?.("Added to cart", "success")
     } catch (err) {
       console.error("Add to cart failed:", err)
-      showToast("Failed to add to cart", "error")
+      showToast?.("Failed to add to cart", "error")
     }
   }
 
@@ -96,8 +133,9 @@ export default function ProductDetailPage() {
       try {
         const res = await axios.get(`${apiUrl}/templates/${id}`)
         setProduct(res.data)
-        setSelectedColor(res.data.colors?.[0] ?? "")
-        setSelectedSize(res.data.sizes?.[0] ?? "")
+        // set sensible defaults if available
+        setSelectedColor(res.data.colors?.[0] ?? null)
+        setSelectedSize(res.data.sizes?.[0] ?? undefined)
       } catch (err) {
         setError("Product not found.")
       } finally {
@@ -195,9 +233,24 @@ export default function ProductDetailPage() {
                   Customizable
                 </Badge>
               )}
+              {product.isFeatured && (
+                <Badge className="bg-rosegold text-ivory">
+                  Featured
+                </Badge>
+              )}
             </div>
 
             <h1 className="text-3xl font-light text-navy mb-2">{product.title}</h1>
+            {product.tags?.length > 0 && (
+              <div className="flex gap-2 mb-2">
+                {product.tags.map((t: string) => (
+                  <Badge key={t} className="text-xs uppercase">{t}</Badge>
+                ))}
+              </div>
+            )}
+            {product.description && (
+              <p className="text-navy/70 mb-3">{product.description}</p>
+            )}
 
             <div className="flex items-center gap-3">
               <span className="text-3xl font-light text-navy">
@@ -213,18 +266,24 @@ export default function ProductDetailPage() {
             {/* Colors */}
             {product.colors?.length > 0 && (
               <div className="space-y-3">
-                <Label className="text-base font-medium">Color: {selectedColor}</Label>
-                <div className="flex gap-3">
-                  {product.colors.map((color: string) => (
-                    <button
-                      key={color}
-                      onClick={() => setSelectedColor(color)}
-                      className={`w-10 h-10 rounded-full border-2 transition-all ${
-                        selectedColor === color ? "border-rosegold scale-110" : "border-warmgray"
-                      }`}
-                      style={{ backgroundColor: color.toLowerCase() }}
-                    />
-                  ))}
+                <Label className="text-base font-medium">Color</Label>
+                <div className="flex items-center gap-3">
+                  <div className="text-sm text-navy/70 mr-2">Selected: {selectedColor ?? "—"}</div>
+                  <div className="flex gap-3" role="list">
+                    {product.colors.map((color: string) => (
+                      <button
+                        key={color}
+                        role="listitem"
+                        aria-pressed={selectedColor === color}
+                        title={color}
+                        onClick={() => setSelectedColor(color)}
+                        className={`w-10 h-10 rounded-full border-2 transition-all focus:outline-none focus:ring-2 ${
+                          selectedColor === color ? "border-rosegold scale-110" : "border-warmgray"
+                        }`}
+                        style={{ backgroundColor: color.toLowerCase() }}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
@@ -233,7 +292,7 @@ export default function ProductDetailPage() {
             {product.sizes?.length > 0 && (
               <div className="space-y-3">
                 <Label className="text-base font-medium">Size</Label>
-                <Select value={selectedSize} onValueChange={setSelectedSize}>
+                <Select value={selectedSize ?? ""} onValueChange={(v) => setSelectedSize(v || undefined)}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select size" />
                   </SelectTrigger>
@@ -273,18 +332,19 @@ export default function ProductDetailPage() {
             <Button
               size="lg"
               className="flex-1 bg-burgundy text-ivory"
+              disabled={product?.inStock === false}
               onClick={async () => {
                 if (!isAuthenticated) return router.push("/login")
                 await handleAddToCart({
-                  templateId: product._id,
-                  itemType: product.category ?? "product",
-                  price: product.price ?? 0,
+                  templateId: product?._id,
+                  itemType: product?.category ?? "product",
                   quantity,
+                  price: Number(product?.price) || 0,
                 })
               }}
             >
               <ShoppingBag className="w-5 h-5 mr-2" />
-              Add to Cart
+              {product?.inStock === false ? "Out of Stock" : "Add to Cart"}
             </Button>
 
             {product.customizable && (

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef, useCallback } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Grid, List, ShoppingBag, Filter as FilterIcon, ChevronDown, ChevronUp } from "lucide-react"
@@ -31,6 +31,12 @@ type Product = {
   customizable?: boolean
   colors?: string[]
   inStock?: boolean
+  isFeatured?: boolean
+  itemType?: string
+  sizes?: string[]
+  tags?: string[]
+  description?: string
+  createdAt?: string
 }
 
 export default function ProductsPage() {
@@ -56,48 +62,87 @@ export default function ProductsPage() {
     setTimeout(() => setToast(null), duration)
   }
 
+  // mountedRef prevents state updates after unmount
+  const mountedRef = useRef(true)
+
   useEffect(() => {
-    const auth = localStorage.getItem("impressa_token")
-    if (auth) setIsAuthenticated(true)
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
   }, [])
 
-  // ✅ Fetch products + dynamically generate categories
+  // fetchProducts as stable callback so we can call it from listeners
+  const fetchProducts = useCallback(async () => {
+    try {
+      if (mountedRef.current) setLoading(true)
+      const res = await axios.get(`${apiUrl}/templates`)
+      if (!mountedRef.current) return
+      const data = Array.isArray(res.data) ? res.data : []
+      setProducts(data)
+
+      // Extract unique categories dynamically
+      const uniqueCats = [
+        "all",
+        ...new Set(
+          data
+            .map((p: Product) => (p.category ?? "").toString().toLowerCase())
+            .filter(Boolean)
+        ),
+      ]
+      setCategories(uniqueCats)
+    } catch (err) {
+      console.error("Error fetching products:", err)
+      if (mountedRef.current) setProducts([])
+    } finally {
+      if (mountedRef.current) setLoading(false)
+    }
+  }, [])
+
+  // initial fetch
   useEffect(() => {
-    let cancelled = false
+    fetchProducts()
+  }, [fetchProducts])
 
-    async function fetchProducts() {
-      try {
-        setLoading(true)
-        const res = await axios.get(`${apiUrl}/templates`)
+  // sync auth state and refresh products on relevant events
+  useEffect(() => {
+    const updateAuth = () => {
+      const auth = typeof window !== "undefined" ? localStorage.getItem("impressa_token") : null
+      setIsAuthenticated(!!auth)
+    }
 
-        if (cancelled) return
-        const data = Array.isArray(res.data) ? res.data : []
-
-        setProducts(data)
-
-        // ✅ Extract unique categories dynamically
-        const uniqueCats = [
-          "all",
-          ...new Set(
-            data
-              .map((p: Product) => (p.category ?? "").toString().toLowerCase())
-              .filter(Boolean)
-          ),
-        ]
-        setCategories(uniqueCats)
-      } catch (err) {
-        console.error("Error fetching products:", err)
-        setProducts([])
-      } finally {
-        if (!cancelled) setLoading(false)
+    const onStorage = (e: StorageEvent) => {
+      // if token or products changed in another tab, update
+      if (e.key === "impressa_token" || e.key === null) updateAuth()
+      // optionally react to other keys that indicate data changes
+      if (e.key === null || e.key === "impressa_products") {
+        fetchProducts()
       }
     }
 
-    fetchProducts()
-    return () => {
-      cancelled = true
+    const onAuthChange = () => {
+      updateAuth()
+      // when auth changes, refetch products if necessary
+      fetchProducts()
     }
-  }, [])
+
+    const onFocus = () => {
+      // refresh when the user returns to the tab (keeps UI fresh)
+      fetchProducts()
+      updateAuth()
+    }
+
+    updateAuth()
+    window.addEventListener("storage", onStorage)
+    window.addEventListener("impressa_auth_change", onAuthChange as EventListener)
+    window.addEventListener("focus", onFocus)
+
+    return () => {
+      window.removeEventListener("storage", onStorage)
+      window.removeEventListener("impressa_auth_change", onAuthChange as EventListener)
+      window.removeEventListener("focus", onFocus)
+    }
+  }, [fetchProducts])
 
   const handleAddToCart = async ({
     templateId,
@@ -122,6 +167,47 @@ export default function ProductsPage() {
       showToast("Added to cart", "success")
     } catch {
       showToast("Failed to add to cart", "error")
+    }
+  }
+
+  // Reusable helper to get a first image for list items
+  const getListPrimaryImage = (p: any) => {
+    if (!p) return "/placeholder.svg"
+    if (Array.isArray(p.imageUrls) && p.imageUrls.length > 0) return p.imageUrls[0]
+    if (p.imageUrl) return p.imageUrl
+    return "/placeholder.svg"
+  }
+
+  // Extend/define a list-specific add-to-cart that carries image and respects stock
+  const handleAddToCartFromList = async (product: any) => {
+    if (!isAuthenticated) return router.push("/login")
+
+    // Respect stock on list view
+    if (product?.inStock === false) {
+      showToast?.("This item is currently out of stock", "error")
+      return
+    }
+
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("impressa_token") : null
+
+      await axios.post(
+        `${apiUrl}/cart/add`,
+        {
+          templateId: product?._id,
+          itemType: product?.category ?? "product",
+          quantity: 1,
+          price: Number(product?.price) || 0,
+          imageUrl: getListPrimaryImage(product),
+          title: product?.title ?? undefined,
+        },
+        { headers: token ? { Authorization: `Bearer ${token}` } : undefined }
+      )
+
+      showToast?.("Added to cart", "success")
+    } catch (err) {
+      console.error("Add to cart (list) failed:", err)
+      showToast?.("Failed to add to cart", "error")
     }
   }
 
@@ -150,13 +236,13 @@ export default function ProductsPage() {
     }
   })
 
-  if (loading) {
-    return (
-      <div className="container py-8">
-        <div className="text-center py-16">Loading products…</div>
-      </div>
-    )
-  }
+  // if (loading) {
+  //   return (
+  //     <div className="container py-8">
+  //       <div className="text-center py-16">Loading products…</div>
+  //     </div>
+  //   )
+  // }
 
   return (
     <div className="container py-8">
@@ -287,12 +373,24 @@ export default function ProductsPage() {
 
                     <div className="p-4 space-y-3">
                       <div>
-                        <h3 className="font-medium text-navy hover:text-burgundy/50 transition-colors">
+                        <h3 className="font-medium text-navy hover:text-burgundy/50 transition-colors capitalize">
                           <Link href={`/products/${product._id}`}>
                             {product.title ?? "Untitled Product"}
                           </Link>
                         </h3>
-                        <p className="text-sm text-navy/60 capitalize">{product.category}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm text-navy/60 capitalize">{product.category}</p>
+                          {/* {product.itemType && <span className="text-xs text-navy/50">• {product.itemType}</span>} */}
+                          {product.isFeatured && (
+                            <Badge variant="secondary" className="text-xs uppercase ml-2">Featured</Badge>
+                          )}
+                          {product.inStock === false && (
+                            <Badge className="bg-red-600 text-white text-xs ml-2">Out of stock</Badge>
+                          )}
+                        </div>
+                        {product.description && (
+                          <p className="text-sm text-navy my-4 line-clamp-4 capitalize">{product.description}</p>
+                        )}
                       </div>
 
                       <div className="flex items-center justify-between">
@@ -300,20 +398,14 @@ export default function ProductsPage() {
                           ₦{(product.price ?? 0).toLocaleString()}
                         </span>
 
-                        <Button
-                          size="sm"
-                          className="bg-burgundy text-ivory"
-                          disabled={!product.inStock}
-                          onClick={() =>
-                            handleAddToCart({
-                              templateId: product._id,
-                              itemType: product.category ?? "product",
-                              price: product.price ?? 0,
-                            })
-                          }
-                        >
-                          <ShoppingBag className="h-4 w-4 mr-1" /> Add
-                        </Button>
+                        <Link href={`/products/${product._id}`}>
+                          <Button
+                            size="sm"
+                            className="bg-burgundy text-ivory"
+                          >
+                            View Product
+                          </Button>
+                        </Link>
                       </div>
                     </div>
                   </CardContent>
