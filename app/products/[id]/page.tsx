@@ -389,7 +389,7 @@ export default function ProductDetailPage() {
             <div className="text-center space-y-2">
               <RotateCcw className="w-6 h-6 text-rosegold mx-auto" />
               <p className="font-medium text-navy">Easy Returns</p>
-              <p className="text-navy/60">30 days</p>
+              <p className="text-navy/60">3 days</p>
             </div>
           </div>
         </div>

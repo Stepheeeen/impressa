@@ -12,6 +12,13 @@ import { apiUrl } from "@/constants/apiUrl"
 import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import SizeSelector from "@/components/SizeSelector"
 import { resolveSizeOptions } from "@/lib/sizePresets"
 
@@ -20,6 +27,14 @@ interface DeliveryAddress {
   state: string
   location: string
 }
+
+// Nigerian states (includes FCT)
+const NIGERIA_STATES = [
+  "Abia", "Adamawa", "Akwa Ibom", "Anambra", "Bauchi", "Bayelsa", "Benue", "Borno",
+  "Cross River", "Delta", "Ebonyi", "Edo", "Ekiti", "Enugu", "Gombe", "Imo", "Jigawa",
+  "Kaduna", "Kano", "Katsina", "Kebbi", "Kogi", "Kwara", "Lagos", "Nasarawa", "Niger",
+  "Ogun", "Ondo", "Osun", "Oyo", "Plateau", "Rivers", "Sokoto", "Taraba", "Yobe", "FCT"
+]
 
 export default function CartPage() {
   const router = useRouter()
@@ -31,8 +46,9 @@ export default function CartPage() {
   const [apiSubtotal, setApiSubtotal] = useState<number | null>(null)
   const [giftWrap, setGiftWrap] = useState(false)
   const [shippingMethod, setShippingMethod] = useState("standard")
+  // default country is Nigeria per request
   const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress>({
-    country: "",
+    country: "Nigeria",
     state: "",
     location: "",
   })
@@ -440,52 +456,88 @@ export default function CartPage() {
               </div>
 
               {/* Address Fields */}
-              <div className="space-y-2">
-                <Label htmlFor="fullName">Full Name</Label>
-                <Input
-                  id="fullName"
-                  placeholder="Enter your full name"
-                  value={user?.username || ""}
-                  onChange={(e) => setUser({ ...user!, username: e.target.value })}
-                  className="border-warmgray/50"
-                />
+              <div className="space-y-4">
+                <div>
 
-                <Label htmlFor="phoneNumber">Phone Number (WhatsApp)</Label>
-                <Input
-                  id="phoneNumber"
-                  type="tel"
-                  placeholder="e.g., +2348012345678"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="border-warmgray/50"
-                />
+                  <Label htmlFor="fullName">Full Name</Label>
+                  <Input
+                    id="fullName"
+                    placeholder="Enter your full name"
+                    value={user?.username || ""}
+                    onChange={(e) => setUser({ ...user!, username: e.target.value })}
+                    className="border-warmgray/50"
+                  />
+                </div>
 
-                <Label htmlFor="country">Country</Label>
-                <Input
-                  id="country"
-                  placeholder="Enter your country"
-                  value={deliveryAddress.country}
-                  onChange={(e) => setDeliveryAddress({ ...deliveryAddress, country: e.target.value })}
-                  className="border-warmgray/50"
-                />
+                <div>
+                  <Label htmlFor="phoneNumber">Phone Number (WhatsApp)</Label>
+                  <Input
+                    id="phoneNumber"
+                    type="tel"
+                    placeholder="e.g., +2348012345678"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="border-warmgray/50"
+                  />
+                </div>
 
-                <Label htmlFor="state">State</Label>
-                <Input
-                  id="state"
-                  placeholder="Enter your state"
-                  value={deliveryAddress.state}
-                  onChange={(e) => setDeliveryAddress({ ...deliveryAddress, state: e.target.value })}
-                  className="border-warmgray/50"
-                />
+                <div>
+                  <Label htmlFor="country">Country</Label>
+                  <Select
+                    value={deliveryAddress.country}
+                    onValueChange={(v) => setDeliveryAddress({ ...deliveryAddress, country: v, state: "" })}
+                  >
+                    <SelectTrigger id="country" className="w-full">
+                      <SelectValue placeholder="Select country" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Nigeria">Nigeria</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                <Label htmlFor="location">City / Location</Label>
-                <Input
-                  id="location"
-                  placeholder="Enter your city or neighborhood"
-                  value={deliveryAddress.location}
-                  onChange={(e) => setDeliveryAddress({ ...deliveryAddress, location: e.target.value })}
-                  className="border-warmgray/50"
-                />
+                <div>
+                  <Label htmlFor="state" className="mt-2">State</Label>
+                  {/* show Nigerian states when country is Nigeria, otherwise show a small select with "Other" */}
+                  <Select
+                    value={deliveryAddress.state}
+                    onValueChange={(v) => setDeliveryAddress({ ...deliveryAddress, state: v })}
+                  >
+                    <SelectTrigger id="state" className="w-full">
+                      <SelectValue placeholder={deliveryAddress.country === "Nigeria" ? "Select state" : "Select / Enter state"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {deliveryAddress.country === "Nigeria"
+                        ? NIGERIA_STATES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)
+                        : (
+                          <>
+                            <SelectItem value="Other">Other</SelectItem>
+                          </>
+                        )}
+                    </SelectContent>
+                  </Select>
+                  {/* If user selected Other for non-Nigeria countries, allow manual entry */}
+                  {deliveryAddress.country !== "Nigeria" && deliveryAddress.state === "Other" && (
+                    <Input
+                      id="stateManual"
+                      placeholder="Enter your state / region"
+                      value={deliveryAddress.state === "Other" ? "" : deliveryAddress.state}
+                      onChange={(e) => setDeliveryAddress({ ...deliveryAddress, state: e.target.value })}
+                      className="border-warmgray/50 mt-2"
+                    />
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="location">City / Location</Label>
+                  <Input
+                    id="location"
+                    placeholder="Enter your city or neighborhood"
+                    value={deliveryAddress.location}
+                    onChange={(e) => setDeliveryAddress({ ...deliveryAddress, location: e.target.value })}
+                    className="border-warmgray/50"
+                  />
+                </div>
               </div>
 
               <Separator />
