@@ -1,6 +1,6 @@
 import Link from "next/link"
 import Image from "next/image"
-import { ArrowRight, Sparkles, Palette, Crown } from "lucide-react"
+import { ArrowRight, Sparkles, ShieldCheck, Crown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import hero from '@/public/shopping-centre.jpg'
@@ -23,9 +23,9 @@ export default function HomePage() {
           priority
         />
         <div className="relative z-20 container text-center space-y-8">
-          <h1 className="text-5xl md:text-7xl font-light tracking-wider text-ivory">IMPRESSA</h1>
+          <h1 className="text-5xl md:text-7xl font-light tracking-wider text-ivory">WELCOME TO IMPRESSA</h1>
           <p className="text-xl md:text-2xl text-ivory/90 font-light max-w-2xl mx-auto leading-relaxed">
-            Where luxury meets personalization. Craft your signature style with our exclusive collection.
+            Shop Well. Spend Less
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button
@@ -76,11 +76,11 @@ export default function HomePage() {
             <Card className="border-warmgray/30 bg-ivory hover:shadow-lg transition-shadow">
               <CardContent className="p-8 text-center space-y-4">
                 <div className="w-16 h-16 bg-rosegold/10 rounded-full flex items-center justify-center mx-auto">
-                  <Palette className="h-8 w-8 text-rosegold" />
+                  <ShieldCheck className="h-8 w-8 text-rosegold" />
                 </div>
-                <h3 className="text-xl font-medium text-navy">Custom Design</h3>
+                <h3 className="text-xl font-medium text-navy">Durability</h3>
                 <p className="text-navy/70 leading-relaxed">
-                  Personalize every piece to reflect your unique style and preferences.
+                  Built to last with enduring craftsmanship that stands up to everyday wear.
                 </p>
               </CardContent>
             </Card>

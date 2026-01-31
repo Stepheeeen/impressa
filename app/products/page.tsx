@@ -357,8 +357,13 @@ export default function ProductsPage() {
                   : product.imageUrl || "/placeholder.svg"
 
               return (
-                <Card key={product._id ?? idx} className="group hover:shadow-lg transition-all border-none">
+                <Card key={product._id ?? idx} className="group hover:shadow-lg transition-all border-none relative">
                   <CardContent className="p-0">
+                    {product.isFeatured && (
+                      <div className="absolute top-3 right-3 z-10">
+                        <Badge variant="secondary" className="text-xs uppercase">Featured</Badge>
+                      </div>
+                    )}
                     <Link href={`/products/${product._id}`}>
                       <div className="relative overflow-hidden">
                         <Image
@@ -381,12 +386,11 @@ export default function ProductsPage() {
                         <div className="flex items-center gap-2">
                           <p className="text-sm text-navy/60 capitalize">{product.category}</p>
                           {/* {product.itemType && <span className="text-xs text-navy/50">• {product.itemType}</span>} */}
-                          {product.isFeatured && (
-                            <Badge variant="secondary" className="text-xs uppercase ml-2">Featured</Badge>
-                          )}
-                          {product.inStock === false && (
-                            <Badge className="bg-red-600 text-white text-xs ml-2">Out of stock</Badge>
-                          )}
+                          <div className="ml-auto flex items-center gap-2">
+                            {product.inStock === false && (
+                              <Badge className="bg-red-600 text-white text-xs">Out of stock</Badge>
+                            )}
+                          </div>
                         </div>
                         {product.description && (
                           <p className="text-sm text-navy my-4 line-clamp-4 capitalize">{product.description}</p>
