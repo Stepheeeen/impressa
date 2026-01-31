@@ -37,6 +37,7 @@ type Product = {
   tags?: string[]
   description?: string
   createdAt?: string
+  updatedAt?: string
 }
 
 export default function ProductsPage() {
@@ -73,21 +74,53 @@ export default function ProductsPage() {
   }, [])
 
   // fetchProducts as stable callback so we can call it from listeners
+  const normalizeTemplate = (item: any): Product => {
+    const imageUrls = Array.isArray(item?.imageUrls)
+      ? item.imageUrls
+      : item?.imageUrl
+      ? [item.imageUrl]
+      : []
+
+    return {
+      _id: item?._id,
+      title: item?.title ?? "",
+      category: item?.category ?? "",
+      price: typeof item?.price === "number" ? item.price : Number(item?.price) || 0,
+      imageUrl: item?.imageUrl ?? imageUrls?.[0],
+      imageUrls,
+      customizable: Boolean(item?.customizable),
+      colors: Array.isArray(item?.colors) ? item.colors : [],
+      inStock: item?.inStock !== undefined ? Boolean(item?.inStock) : true,
+      isFeatured: Boolean(item?.isFeatured),
+      itemType: item?.itemType ?? item?.category ?? "product",
+      sizes: Array.isArray(item?.sizes) ? item.sizes : [],
+      tags: Array.isArray(item?.tags) ? item.tags : [],
+      description: item?.description ?? "",
+      createdAt: item?.createdAt,
+      updatedAt: item?.updatedAt,
+    }
+  }
+
   const fetchProducts = useCallback(async () => {
     try {
       if (mountedRef.current) setLoading(true)
       const res = await axios.get(`${apiUrl}/templates`)
       if (!mountedRef.current) return
-      const data = Array.isArray(res.data) ? res.data : []
+      const raw =
+        Array.isArray(res.data) ? res.data :
+        Array.isArray(res.data?.data) ? res.data.data :
+        Array.isArray(res.data?.templates) ? res.data.templates :
+        []
+      const data = raw.map(normalizeTemplate)
       setProducts(data)
 
       // Extract unique categories dynamically
-      const uniqueCats = [
+      const uniqueCats: string[] = [
         "all",
-        ...new Set(
+        ...new Set<string>(
           data
             .map((p: Product) => (p.category ?? "").toString().toLowerCase())
-            .filter(Boolean)
+            .filter((cat:any): cat is string => Boolean(cat))
         ),
       ]
       setCategories(uniqueCats)
@@ -195,7 +228,7 @@ export default function ProductsPage() {
         `${apiUrl}/cart/add`,
         {
           templateId: product?._id,
-          itemType: product?.category ?? "product",
+          itemType: product?.itemType ?? product?.category ?? "product",
           quantity: 1,
           price: Number(product?.price) || 0,
           imageUrl: getListPrimaryImage(product),

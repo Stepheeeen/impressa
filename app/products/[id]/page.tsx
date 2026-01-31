@@ -53,6 +53,27 @@ export default function ProductDetailPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false)
   const [toast, setToast] = useState<{ message: string; type?: "success" | "error" } | null>(null)
 
+  const normalizeTemplate = (item: any) => {
+    const imageUrls = Array.isArray(item?.imageUrls)
+      ? item.imageUrls
+      : item?.imageUrl
+      ? [item.imageUrl]
+      : []
+
+    return {
+      ...item,
+      price: typeof item?.price === "number" ? item.price : Number(item?.price) || 0,
+      imageUrls,
+      imageUrl: item?.imageUrl ?? imageUrls?.[0],
+      colors: Array.isArray(item?.colors) ? item.colors : [],
+      sizes: Array.isArray(item?.sizes)
+        ? item.sizes.map((size: any) => String(size)).filter(Boolean)
+        : [],
+      tags: Array.isArray(item?.tags) ? item.tags : [],
+      itemType: item?.itemType ?? item?.category ?? "product",
+    }
+  }
+
   // Auth check
   useEffect(() => {
     const auth = localStorage.getItem("impressa_token")
@@ -132,10 +153,12 @@ export default function ProductDetailPage() {
     const fetchProduct = async () => {
       try {
         const res = await axios.get(`${apiUrl}/templates/${id}`)
-        setProduct(res.data)
+        const payload = res.data?.data ?? res.data?.template ?? res.data
+        const normalized = normalizeTemplate(payload)
+        setProduct(normalized)
         // set sensible defaults if available
-        setSelectedColor(res.data.colors?.[0] ?? null)
-        setSelectedSize(res.data.sizes?.[0] ?? undefined)
+        setSelectedColor(normalized.colors?.[0] ?? null)
+        setSelectedSize(normalized.sizes?.[0] ?? undefined)
       } catch (err) {
         setError("Product not found.")
       } finally {
@@ -337,7 +360,7 @@ export default function ProductDetailPage() {
                 if (!isAuthenticated) return router.push("/login")
                 await handleAddToCart({
                   templateId: product?._id,
-                  itemType: product?.category ?? "product",
+                  itemType: product?.itemType ?? product?.category ?? "product",
                   quantity,
                   price: Number(product?.price) || 0,
                 })
