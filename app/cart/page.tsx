@@ -324,12 +324,12 @@ export default function CartPage() {
 
   return (
     <div className="container py-8">
-      <div className="mb-8 flex justify-between items-center">
+      <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
         <div>
           <h1 className="text-3xl font-light text-navy mb-2">Shopping Cart</h1>
           <p className="text-navy/60">{items.length} items in cart</p>
         </div>
-        <Button variant="ghost" className="text-burgundy" onClick={clearCart}>
+        <Button variant="ghost" className="text-burgundy self-start sm:self-auto" onClick={clearCart}>
           Clear Cart
         </Button>
       </div>
@@ -347,16 +347,16 @@ export default function CartPage() {
             return (
               <Card key={itemId || Math.random()} className="border-warmgray/30">
                 <CardContent className="p-6">
-                  <div className="flex gap-4">
+                  <div className="flex flex-col gap-4 sm:flex-row">
                     <Image
                       src={getItemImage(item)}
                       alt={item?.title || "Product"}
                       width={150}
                       height={200}
-                      className="w-24 h-32 rounded-md object-cover"
+                      className="w-full h-48 sm:w-24 sm:h-32 rounded-md object-cover"
                     />
                     <div className="flex-1 space-y-3">
-                      <div className="flex justify-between items-start">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-start">
                         <div>
                           <h3 className="font-medium text-navy">{item?.title || "Product"}</h3>
                           <p className="text-sm text-navy/60">
@@ -393,16 +393,17 @@ export default function CartPage() {
                             </span>
                           </div>
                         </div>
-                        <Button variant="ghost" size="icon" onClick={() => removeItem(itemId)}>
+                        <Button variant="ghost" size="icon" className="self-end sm:self-auto" onClick={() => removeItem(itemId)}>
                           <Trash2 className="h-4 w-4 text-red-500" />
                         </Button>
                       </div>
 
-                      <div className="flex justify-between items-center">
+                      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-center gap-3">
                           <Button
                             variant="outline"
                             size="icon"
+                            className="h-10 w-10"
                             disabled={qty <= 1}
                             onClick={() => updateQuantity(itemId, Math.max(1, qty - 1))}
                           >
@@ -412,12 +413,13 @@ export default function CartPage() {
                           <Button
                             variant="outline"
                             size="icon"
+                            className="h-10 w-10"
                             onClick={() => updateQuantity(itemId, qty + 1)}
                           >
                             <Plus className="h-3 w-3" />
                           </Button>
                         </div>
-                        <div className="text-right font-medium text-navy">
+                        <div className="text-right font-medium text-navy sm:text-right">
                           {formatCurrency(lineTotal)}
                         </div>
                       </div>
