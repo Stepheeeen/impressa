@@ -45,6 +45,9 @@ export default function CartPage() {
   const [token, setToken] = useState<string | null>(null)
   const [user, setUser] = useState<{ username?: string; email?: string; phone?: string; role?: string } | null>(null)
   const [apiSubtotal, setApiSubtotal] = useState<number | null>(null)
+  // Each seller charges their own delivery fee, so the server works out the total.
+  const [apiDeliveryFee, setApiDeliveryFee] = useState<number | null>(null)
+  const [sellerCount, setSellerCount] = useState(1)
   const [giftWrap, setGiftWrap] = useState(false)
   const [shippingMethod, setShippingMethod] = useState("standard")
   // default country is Nigeria per request
@@ -113,6 +116,8 @@ export default function CartPage() {
       console.log("Fetched cart data:", data)
       setItems(Array.isArray(data.items) ? data.items : [])
       setApiSubtotal(safeNumber(data.subtotal))
+      setApiDeliveryFee(data.deliveryFee !== undefined ? safeNumber(data.deliveryFee) : null)
+      setSellerCount(Array.isArray(data.sellers) && data.sellers.length > 0 ? data.sellers.length : 1)
     } catch (err) {
       console.error("Failed to fetch cart:", err)
       setItems([])
@@ -204,7 +209,7 @@ export default function CartPage() {
             0
           );
 
-      const shippingFee = 1500;
+      const shippingFee = apiDeliveryFee ?? 1500;
       const totalWithDelivery = subtotalValue + shippingFee;
       const orderId = crypto.randomUUID();
 
@@ -320,7 +325,7 @@ export default function CartPage() {
         return sum + safeNumber(item.unitPrice) * safeNumber(item.quantity)
       }, 0)
 
-  const shippingFee = 1500
+  const shippingFee = apiDeliveryFee ?? 1500
   const total = computedSubtotal + shippingFee
 
   return (
@@ -446,7 +451,7 @@ export default function CartPage() {
               </div>
 
               <div className="flex justify-between">
-                <span>Shipping</span>
+                <span>Shipping{sellerCount > 1 ? ` (${sellerCount} sellers)` : ""}</span>
                 <span>{formatCurrency(shippingFee)}</span>
               </div>
 
@@ -561,7 +566,7 @@ export default function CartPage() {
 
               <div className="flex items-center justify-center gap-2 text-sm text-navy/60">
                 <Truck className="h-4 w-4" />
-                <span>Free shipping on orders over ₦50,000</span>
+                <span>Each seller ships their own items and sets their own delivery fee.</span>
               </div>
             </CardContent>
           </Card>
