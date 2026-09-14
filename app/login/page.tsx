@@ -93,6 +93,12 @@ export default function LoginPage() {
                 </button>
               </div>
 
+              <div className="flex justify-end -mt-3">
+                <a href="/forgot-password" className="text-sm underline text-navy/70">
+                  Forgot password?
+                </a>
+              </div>
+
               {error && <p className="text-destructive text-sm">{error}</p>}
 
               <Button className="w-full bg-burgundy hover:bg-burgundy/90 text-ivory" disabled={loading} onClick={handleLogin}>

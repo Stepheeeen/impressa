@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import axios from "axios"
+import { apiErrorMessage } from "@/lib/apiError"
 import Image from "next/image"
 import { useParams, useRouter } from "next/navigation"
 import {
@@ -144,7 +145,7 @@ export default function ProductDetailPage() {
       showToast?.("Added to cart", "success")
     } catch (err) {
       console.error("Add to cart failed:", err)
-      showToast?.("Failed to add to cart", "error")
+      showToast?.(apiErrorMessage(err, "Failed to add to cart"), "error")
     }
   }
 

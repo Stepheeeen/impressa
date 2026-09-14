@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { useRouter } from "next/navigation"
 import axios from "axios"
+import { apiErrorMessage } from "@/lib/apiError"
 import { apiUrl } from "@/constants/apiUrl"
 
 type Product = {
@@ -198,8 +199,8 @@ export default function ProductsPage() {
         { headers: { Authorization: `Bearer ${token}` } }
       )
       showToast("Added to cart", "success")
-    } catch {
-      showToast("Failed to add to cart", "error")
+    } catch (err) {
+      showToast(apiErrorMessage(err, "Failed to add to cart"), "error")
     }
   }
 
@@ -240,7 +241,7 @@ export default function ProductsPage() {
       showToast?.("Added to cart", "success")
     } catch (err) {
       console.error("Add to cart (list) failed:", err)
-      showToast?.("Failed to add to cart", "error")
+      showToast?.(apiErrorMessage(err, "Failed to add to cart"), "error")
     }
   }
 

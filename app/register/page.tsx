@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Eye, EyeOff } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { apiUrl } from "@/constants/apiUrl"
+import { apiErrorMessage } from "@/lib/apiError"
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -39,8 +40,8 @@ export default function RegisterPage() {
       } else {
         router.push("/login")
       }
-    } catch {
-      setError("Registration failed. Try again.")
+    } catch (err) {
+      setError(apiErrorMessage(err, "Registration failed. Try again."))
     } finally {
       setLoading(false)
     }

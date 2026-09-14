@@ -5,11 +5,15 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import React, { useEffect, useState } from "react"
 import axios from "axios"
 import { Skeleton } from "@/components/ui/skeleton"
 import { apiUrl } from "@/constants/apiUrl"
+import { apiErrorMessage } from "@/lib/apiError"
 
 interface Order {
 	_id: string
@@ -82,11 +86,46 @@ export default function AccountPage() {
 		if (isAuthenticated) fetchOrders()
 	}, [isAuthenticated])
 
+	const [deleteOpen, setDeleteOpen] = useState(false)
+	const [deletePassword, setDeletePassword] = useState("")
+	const [deleteError, setDeleteError] = useState("")
+	const [deleting, setDeleting] = useState(false)
+
 	const handleLogout = () => {
 		localStorage.removeItem("impressa_token")
 		localStorage.removeItem("impressa_user")
 		window.dispatchEvent(new Event("impressa_auth_change"))
 		router.push("/products")
+	}
+
+	const openDeleteDialog = (open: boolean) => {
+		setDeleteOpen(open)
+		setDeletePassword("")
+		setDeleteError("")
+	}
+
+	const handleDeleteAccount = async (e: React.FormEvent) => {
+		e.preventDefault()
+		setDeleteError("")
+		if (!deletePassword) {
+			setDeleteError("Enter your password to confirm.")
+			return
+		}
+
+		setDeleting(true)
+		try {
+			const token = localStorage.getItem("impressa_token")
+			await axios.delete(`${apiUrl}/auth/me`, {
+				headers: { Authorization: `Bearer ${token}` },
+				data: { password: deletePassword },
+			})
+			setDeleteOpen(false)
+			handleLogout()
+		} catch (err) {
+			setDeleteError(apiErrorMessage(err, "Couldn't delete your account. Try again."))
+		} finally {
+			setDeleting(false)
+		}
 	}
 
 	if (!isAuthenticated) return null
@@ -159,7 +198,7 @@ export default function AccountPage() {
 						<CardHeader className="flex flex-row items-center justify-between">
 							<CardTitle className="flex items-center gap-2">Recent Orders</CardTitle>
 							<Button variant="outline" size="sm" asChild>
-								<Link href="/account/orders">View All</Link>
+								<Link href="/orders">View All</Link>
 							</Button>
 						</CardHeader>
 						<CardContent>
@@ -208,8 +247,65 @@ export default function AccountPage() {
 							)}
 						</CardContent>
 					</Card>
+
+					{/* Delete Account */}
+					<Card className="border-warmgray/30">
+						<CardHeader>
+							<CardTitle className="flex items-center gap-2">Delete account</CardTitle>
+						</CardHeader>
+						<CardContent className="space-y-4">
+							<p className="text-sm text-navy/70 max-w-prose">
+								Permanently delete your Impressa account, cart and saved details. Records of past orders are kept for
+								accounting, without your contact details. You can only delete your account once all your orders have
+								been delivered.
+							</p>
+							<Button
+								variant="outline"
+								className="border-destructive text-destructive hover:bg-destructive hover:text-white"
+								onClick={() => openDeleteDialog(true)}
+							>
+								Delete account
+							</Button>
+						</CardContent>
+					</Card>
 				</div>
 			</div>
+
+			<Dialog open={deleteOpen} onOpenChange={openDeleteDialog}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Delete your account?</DialogTitle>
+					</DialogHeader>
+					<form onSubmit={handleDeleteAccount} className="space-y-4">
+						<p className="text-sm text-navy/70">
+							This can't be undone. Enter your password to confirm.
+						</p>
+						<div className="space-y-2">
+							<Label htmlFor="delete-password">Password</Label>
+							<Input
+								id="delete-password"
+								type="password"
+								autoComplete="current-password"
+								value={deletePassword}
+								onChange={(e) => setDeletePassword(e.target.value)}
+							/>
+						</div>
+						{deleteError && (
+							<p className="text-destructive text-sm" role="alert">
+								{deleteError}
+							</p>
+						)}
+						<div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+							<Button type="button" variant="outline" onClick={() => openDeleteDialog(false)} disabled={deleting}>
+								Keep my account
+							</Button>
+							<Button type="submit" className="bg-destructive text-white hover:bg-destructive/90" disabled={deleting}>
+								{deleting ? "Deleting..." : "Delete account"}
+							</Button>
+						</div>
+					</form>
+				</DialogContent>
+			</Dialog>
 		</div>
 	)
 }
