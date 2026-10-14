@@ -71,7 +71,7 @@ export default function RegisterPage() {
                 <Label>Email</Label>
                 <Input
                   type="email"
-                  placeholder="user@impressa.com"
+                  placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />

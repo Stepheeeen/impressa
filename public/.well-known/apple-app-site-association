@@ -1,0 +1,13 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["REPLACE_WITH_APPLE_TEAM_ID.com.impressa.app"],
+        "components": [
+          { "/": "/shared-cart/*", "comment": "Shared cart invites open in the app" },
+          { "/": "/group-buy/*", "comment": "Group buy invites open in the app" }
+        ]
+      }
+    ]
+  }
+}
